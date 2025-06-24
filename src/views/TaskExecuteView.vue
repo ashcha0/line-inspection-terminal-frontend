@@ -17,6 +17,13 @@
           <el-button type="primary" @click="handleMove('forward')">前进</el-button>
           <el-button type="warning" @click="handleMove('stop')">停止</el-button>
           <el-button type="info" @click="handleMove('backward')">后退</el-button>
+          <el-button 
+            :type="audioEnabled ? 'success' : 'default'" 
+            @click="toggleAudio"
+            :icon="audioEnabled ? 'Microphone' : 'MicrophoneSlash'"
+          >
+            {{ audioEnabled ? '音频开' : '音频关' }}
+          </el-button>
           <el-button type="danger" @click="handleEndTask(true)">终止巡检</el-button>
           <el-button type="success" @click="handleEndTask(false)">完成巡检</el-button>
         </div>
@@ -39,6 +46,34 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 实时缺陷弹窗 -->
+    <el-dialog v-model="flawDialogVisible" title="发现新缺陷" width="600px">
+      <div v-if="currentFlaw.id">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-image 
+              :src="currentFlaw.flawImageUrl" 
+              fit="contain" 
+              style="width: 100%; height: 200px; background: #f5f7fa;"
+            />
+          </el-col>
+          <el-col :span="12">
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="缺陷名称">{{ currentFlaw.flawName }}</el-descriptions-item>
+              <el-descriptions-item label="缺陷类型">{{ currentFlaw.flawType }}</el-descriptions-item>
+              <el-descriptions-item label="发现距离">{{ currentFlaw.flawDistance }}m</el-descriptions-item>
+              <el-descriptions-item label="缺陷等级">{{ currentFlaw.level }}</el-descriptions-item>
+              <el-descriptions-item label="缺陷描述">{{ currentFlaw.flawDesc }}</el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+        </el-row>
+      </div>
+      <template #footer>
+        <el-button @click="flawDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="viewFlawDetail">查看详情</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -64,14 +99,19 @@ const id = route.params.id as string
 
 const videoPlayer = ref<HTMLVideoElement | null>(null)
 const currentStreamId = ref(1)
+const audioEnabled = ref(false)
 
 // rtcClient 来自外部 JS 库，类型设为 any
 // 使用 @ts-ignore 来忽略下一行的类型检查，这是处理无类型定义的第三方库的常用方法
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let rtcClient: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let audioClient: any = null
 
 const agvStatus = ref<Partial<AgvStatus>>({})
 const liveFlaws = ref<Flaw[]>([])
+const flawDialogVisible = ref(false)
+const currentFlaw = ref<Partial<Flaw>>({})
 let heartbeatTimer: number | null = null
 let liveInfoTimer: number | null = null
 
@@ -79,7 +119,10 @@ const playStream = () => {
   if (rtcClient) {
     rtcClient.close()
   }
+  // 本地开发时使用相对路径，通过vite代理转发
   const webrtcUrl = `/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}&type=play`
+  // 连接车载WiFi时直接使用车载服务器地址（取消注释并注释上面的webrtcUrl）
+  // const webrtcUrl = `http://192.168.2.2/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}&type=play`
 
   // ZLMRTCClient 是从外部脚本加载的，所以我们使用 window.ZLMRTCClient
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,6 +145,31 @@ const playStream = () => {
   })
 }
 
+const toggleAudio = () => {
+  audioEnabled.value = !audioEnabled.value
+  
+  if (audioEnabled.value) {
+    // 启动音频流
+    // 本地开发时使用相对路径，通过vite代理转发
+    const audioUrl = `/webrtc-api/index/api/webrtc?app=live&stream=5&type=play`
+    // 连接车载WiFi时直接使用车载服务器地址（取消注释并注释上面的audioUrl）
+    // const audioUrl = `http://192.168.2.2/webrtc-api/index/api/webrtc?app=live&stream=5&type=play`
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    audioClient = new (window as any).ZLMRTCClient.Endpoint({
+      zlmsdpUrl: audioUrl,
+      debug: true
+    })
+    ElMessage.success('音频已开启')
+  } else {
+    // 关闭音频流
+    if (audioClient) {
+      audioClient.close()
+      audioClient = null
+    }
+    ElMessage.info('音频已关闭')
+  }
+}
+
 const handleMove = async (action: 'forward' | 'stop' | 'backward') => {
   try {
     const actions = { forward: agvForward, stop: agvStop, backward: agvBackward }
@@ -117,7 +185,18 @@ const handleMove = async (action: 'forward' | 'stop' | 'backward') => {
 const handleEndTask = async (isAbort: boolean) => {
   await endTask(Number(id), isAbort)
   ElMessage.success(isAbort ? '任务已终止' : '任务已完成，请复盘')
-  router.push('/tasks')
+  
+  if (isAbort) {
+    router.push('/tasks')
+  } else {
+    // 任务完成，跳转到上传页面
+    router.push(`/task/upload/${id}`)
+  }
+}
+
+const viewFlawDetail = () => {
+  flawDialogVisible.value = false
+  router.push(`/task/detail/${id}`)
 }
 
 const goBack = () => {
@@ -142,8 +221,18 @@ onMounted(() => {
   liveInfoTimer = window.setInterval(async () => {
     const res = await getLiveInfo(id)
     if (res.data && res.data.length > 0) {
-      liveFlaws.value.push(...res.data)
-      ElMessage.warning(`发现新的实时缺陷!`)
+      // 检查是否有新的缺陷
+      const newFlaws = res.data.filter((flaw: Flaw) => 
+        !liveFlaws.value.find(existing => existing.id === flaw.id)
+      )
+      
+      if (newFlaws.length > 0) {
+        liveFlaws.value.push(...newFlaws)
+        // 显示第一个新缺陷的弹窗
+        currentFlaw.value = newFlaws[0]
+        flawDialogVisible.value = true
+        ElMessage.warning(`发现新的实时缺陷!`)
+      }
     }
   }, 5000)
 })
@@ -151,6 +240,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (rtcClient) {
     rtcClient.close()
+  }
+  if (audioClient) {
+    audioClient.close()
   }
   if (heartbeatTimer) clearInterval(heartbeatTimer)
   if (liveInfoTimer) clearInterval(liveInfoTimer)

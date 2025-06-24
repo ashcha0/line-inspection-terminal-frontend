@@ -3,7 +3,10 @@ import { ElMessage } from 'element-plus'
 import type { ApiResponse } from '@/types/api'
 
 const service: AxiosInstance = axios.create({
+  // 本地开发时使用相对路径，通过vite代理转发
   baseURL: '/prod-api',
+  // 连接车载WiFi时直接使用车载服务器地址（取消注释并注释上面的baseURL）
+  // baseURL: 'http://192.168.2.2/prod-api',
   timeout: 10000
 })
 
@@ -27,7 +30,7 @@ service.interceptors.response.use(
     } else {
       // 成功则直接返回响应体中的 res 对象
       // 这样在具体的API调用中，.then()里拿到的就是 res
-      return res
+      return response
     }
   },
   /**
