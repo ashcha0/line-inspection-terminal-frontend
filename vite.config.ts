@@ -25,11 +25,17 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/prod-api': {
+        // 本地开发时使用 mock 服务器
         target: 'http://localhost:8080',
+        // 连接车载WiFi时使用以下配置（取消注释并注释上面的target）
+        // target: 'http://192.168.2.2',
         changeOrigin: true,
       },
       '/webrtc-api': {
+        // 本地开发时使用 mock 服务器
         target: 'http://localhost:8080',
+        // 连接车载WiFi时使用以下配置（取消注释并注释上面的target）
+        // target: 'http://192.168.2.2',
         changeOrigin: true,
         ws: true,
       },

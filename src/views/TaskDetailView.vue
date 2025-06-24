@@ -48,15 +48,30 @@
       </div>
       <el-empty v-else description="请从右侧列表选择一个缺陷" />
     </el-card>
+    
+    <!-- 任务操作区域 -->
+    <el-card style="margin-top: 20px;">
+      <template #header>任务操作</template>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <el-button v-if="taskInfo.taskStatus === '待上传'" type="success" @click="handleUpload">
+          📤 上传任务数据
+        </el-button>
+        <el-button @click="goBack">返回任务列表</el-button>
+        <span v-if="taskInfo.taskStatus === '待上传'" style="color: #909399; font-size: 14px;">
+          提示：确认所有缺陷后，点击上传按钮将数据上传到云端
+        </span>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { listFlaws, updateFlaw } from '@/api/flaw';
 import { ElMessage } from 'element-plus';
-import type { Flaw } from '@/types/models';
+import { listFlaws, updateFlaw } from '@/api/flaw';
+import { getTask } from '@/api/task';
+import type { Flaw, Task } from '@/types/models';
 
 const route = useRoute();
 const router = useRouter();
@@ -64,8 +79,18 @@ const taskId = route.params.id as string;
 
 const flawList = ref<Flaw[]>([]);
 const currentFlaw = ref<Partial<Flaw>>({});
+const taskInfo = ref<Partial<Task>>({});
 
 const goBack = () => router.back();
+
+const loadTaskInfo = async () => {
+  try {
+    const res = await getTask(Number(taskId));
+    taskInfo.value = res.data;
+  } catch (error) {
+    ElMessage.error('加载任务信息失败');
+  }
+};
 
 const getFlaws = async () => {
     const res = await listFlaws(taskId);
@@ -92,5 +117,12 @@ const saveFlawConfirmation = async () => {
     }
 };
 
-onMounted(getFlaws);
+const handleUpload = () => {
+  router.push(`/task/upload/${taskId}`);
+};
+
+onMounted(async () => {
+  await loadTaskInfo();
+  await getFlaws();
+});
 </script>

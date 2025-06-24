@@ -22,6 +22,13 @@ export function listTasks(params: TaskQueryParams): Promise<TableDataInfo<Task>>
   })
 }
 
+export function getTask(id: number): Promise<ApiResponse<Task>> {
+  return request({
+    url: `/agv/task/${id}`,
+    method: 'get'
+  })
+}
+
 export function addTask(data: Partial<Task>): Promise<ApiResponse<Task>> {
   return request({
     url: '/agv/task',
@@ -57,5 +64,19 @@ export function endTask(id: number, isAbort: boolean): Promise<ApiResponse> {
     url: `/agv/task/end/${id}`,
     method: 'post',
     params: { isAbort }
+  })
+}
+
+export function preUploadTask(id: number): Promise<ApiResponse> {
+  return request({
+    url: `/agv/task/preupload/${id}`,
+    method: 'get'
+  })
+}
+
+export function uploadTask(id: number): Promise<ApiResponse> {
+  return request({
+    url: `/agv/task/upload/${id}`,
+    method: 'post'
   })
 }

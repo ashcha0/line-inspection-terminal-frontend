@@ -25,6 +25,12 @@ const router = createRouter({
       component: () => import('../views/TaskExecuteView.vue'),
       props: true,
     },
+    {
+      path: '/task/upload/:id',
+      name: 'TaskUploadView',
+      component: () => import('../views/TaskUploadView.vue'),
+      props: true,
+    },
   ]
 })
 
