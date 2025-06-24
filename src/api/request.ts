@@ -30,7 +30,7 @@ service.interceptors.response.use(
     } else {
       // 成功则直接返回响应体中的 res 对象
       // 这样在具体的API调用中，.then()里拿到的就是 res
-      return response
+      return res
     }
   },
   /**
