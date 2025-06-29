@@ -31,6 +31,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { checkFs, checkDb, checkAgv, checkCam } from '@/api/system'
 import SettingsView from '@/components/SettingsView.vue'
+import { ElMessage } from 'element-plus'
 
 type CheckStatus = 'loading' | 'success' | 'error'
 interface CheckItem {
@@ -61,16 +62,42 @@ const runChecks = async () => {
   const promises = checkItems.value.map((item) =>
     item
       .checkFunc()
-      .then(() => {
+      .then((result) => {
         item.status = 'success'
+        console.log(`${item.label}检查成功:`, result)
       })
-      .catch(() => {
+      .catch((error) => {
         item.status = 'error'
+        console.error(`${item.label}检查失败:`, error)
+
+        // 根据不同的检查项提供具体的错误提示
+        let errorMsg = '检查失败'
+        if (item.key === 'fs') {
+          errorMsg = '文件系统检查失败，请检查存储空间'
+        } else if (item.key === 'db') {
+          errorMsg = '数据库连接失败，请检查数据库服务'
+        } else if (item.key === 'agv') {
+          errorMsg = 'AGV通信失败，请检查AGV连接状态'
+        } else if (item.key === 'cam') {
+          errorMsg = '摄像头连接失败，请检查摄像头服务和网络连接'
+        }
+
+        ElMessage.error(`${item.label}: ${errorMsg}`)
       })
   )
 
   await Promise.allSettled(promises)
   isChecking.value = false
+
+  // 检查完成后的提示
+  const successCount = checkItems.value.filter(item => item.status === 'success').length
+  const totalCount = checkItems.value.length
+
+  if (successCount === totalCount) {
+    ElMessage.success('所有系统检查通过，可以进入系统')
+  } else {
+    ElMessage.warning(`系统检查完成：${successCount}/${totalCount} 项通过`)
+  }
 }
 
 const enterSystem = () => {

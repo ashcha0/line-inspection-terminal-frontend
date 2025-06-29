@@ -31,6 +31,11 @@ const router = createRouter({
       component: () => import('../views/TaskUploadView.vue'),
       props: true,
     },
+    {
+      path: '/api-test',
+      name: 'ApiTestView',
+      component: () => import('../views/ApiTestView.vue'),
+    },
   ]
 })
 

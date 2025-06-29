@@ -11,14 +11,19 @@
           style="width: 100%; height: auto; background-color: black"
         ></video>
         <div class="control-panel">
-          <el-select v-model="currentStreamId" placeholder="选择摄像头" @change="playStream" style="width: 120px">
-            <el-option v-for="i in 4" :key="i" :label="`摄像头 ${i}`" :value="i" />
+          <el-select v-model="currentStreamId" placeholder="选择摄像头" @change="playStream" style="width: 200px">
+            <el-option
+              v-for="device in cameraDevices"
+              :key="device.id"
+              :label="device.name || `摄像头 ${device.id}`"
+              :value="device.id"
+            />
           </el-select>
           <el-button type="primary" @click="handleMove('forward')">前进</el-button>
           <el-button type="warning" @click="handleMove('stop')">停止</el-button>
           <el-button type="info" @click="handleMove('backward')">后退</el-button>
-          <el-button 
-            :type="audioEnabled ? 'success' : 'default'" 
+          <el-button
+            :type="audioEnabled ? 'success' : 'default'"
             @click="toggleAudio"
             :icon="audioEnabled ? 'Microphone' : 'MicrophoneSlash'"
           >
@@ -52,9 +57,9 @@
       <div v-if="currentFlaw.id">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-image 
-              :src="currentFlaw.flawImageUrl" 
-              fit="contain" 
+            <el-image
+              :src="currentFlaw.flawImageUrl"
+              fit="contain"
               style="width: 100%; height: 200px; background: #f5f7fa;"
             />
           </el-col>
@@ -83,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getHeartbeat, agvForward, agvStop, agvBackward } from '@/api/movement'
 import { getLiveInfo } from '@/api/flaw'
 import { endTask } from '@/api/task'
+import { getDeviceList, type CameraDevice } from '@/api/camera'
 import { ElMessage } from 'element-plus'
 import type { Flaw } from '@/types/models'
 
@@ -98,8 +104,9 @@ const router = useRouter()
 const id = route.params.id as string
 
 const videoPlayer = ref<HTMLVideoElement | null>(null)
-const currentStreamId = ref(1)
+const currentStreamId = ref('')
 const audioEnabled = ref(false)
+const cameraDevices = ref<CameraDevice[]>([])
 
 // rtcClient 来自外部 JS 库，类型设为 any
 // 使用 @ts-ignore 来忽略下一行的类型检查，这是处理无类型定义的第三方库的常用方法
@@ -115,14 +122,41 @@ const currentFlaw = ref<Partial<Flaw>>({})
 let heartbeatTimer: number | null = null
 let liveInfoTimer: number | null = null
 
+// 获取摄像头设备列表
+const loadCameraDevices = async () => {
+  try {
+    const response = await getDeviceList()
+    cameraDevices.value = response.data || []
+    // 如果有设备，默认选择第一个
+    if (cameraDevices.value.length > 0) {
+      currentStreamId.value = cameraDevices.value[0].id
+    }
+    console.log('摄像头设备列表:', cameraDevices.value)
+  } catch (error) {
+    console.error('获取摄像头设备列表失败:', error)
+    ElMessage.warning('获取摄像头设备列表失败，使用默认配置')
+    // 使用默认设备列表
+    cameraDevices.value = [
+      { id: '1', name: '摄像头 1', status: 'online' },
+      { id: '2', name: '摄像头 2', status: 'online' },
+      { id: '3', name: '摄像头 3', status: 'online' },
+      { id: '4', name: '摄像头 4', status: 'online' }
+    ]
+    currentStreamId.value = '1'
+  }
+}
+
 const playStream = () => {
+  if (!currentStreamId.value) {
+    ElMessage.warning('请先选择摄像头')
+    return
+  }
+
   if (rtcClient) {
     rtcClient.close()
   }
-  // 本地开发时使用相对路径，通过vite代理转发
-  const webrtcUrl = `/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}&type=play`
-  // 连接车载WiFi时直接使用车载服务器地址（取消注释并注释上面的webrtcUrl）
-  // const webrtcUrl = `http://192.168.2.2/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}&type=play`
+  // 根据接口文档，使用摄像头ID构建流媒体URL
+  const webrtcUrl = `/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}_01&type=play`
 
   // ZLMRTCClient 是从外部脚本加载的，所以我们使用 window.ZLMRTCClient
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,7 +181,7 @@ const playStream = () => {
 
 const toggleAudio = () => {
   audioEnabled.value = !audioEnabled.value
-  
+
   if (audioEnabled.value) {
     // 启动音频流
     // 本地开发时使用相对路径，通过vite代理转发
@@ -185,7 +219,7 @@ const handleMove = async (action: 'forward' | 'stop' | 'backward') => {
 const handleEndTask = async (isAbort: boolean) => {
   await endTask(Number(id), isAbort)
   ElMessage.success(isAbort ? '任务已终止' : '任务已完成，请复盘')
-  
+
   if (isAbort) {
     router.push('/tasks')
   } else {
@@ -210,8 +244,14 @@ const goBack = () => {
   }
 };
 
-onMounted(() => {
-  playStream()
+onMounted(async () => {
+  // 先加载摄像头设备列表
+  await loadCameraDevices()
+
+  // 然后播放视频流
+  if (currentStreamId.value) {
+    playStream()
+  }
 
   heartbeatTimer = window.setInterval(async () => {
     const res = await getHeartbeat()
@@ -222,10 +262,10 @@ onMounted(() => {
     const res = await getLiveInfo(id)
     if (res.data && res.data.length > 0) {
       // 检查是否有新的缺陷
-      const newFlaws = res.data.filter((flaw: Flaw) => 
+      const newFlaws = res.data.filter((flaw: Flaw) =>
         !liveFlaws.value.find(existing => existing.id === flaw.id)
       )
-      
+
       if (newFlaws.length > 0) {
         liveFlaws.value.push(...newFlaws)
         // 显示第一个新缺陷的弹窗
