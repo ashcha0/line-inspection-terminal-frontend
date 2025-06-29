@@ -207,14 +207,14 @@ const loadCameraList = async () => {
   try {
     isRefreshing.value = true
     addLog('info', '正在获取摄像头设备列表...')
-    console.log('播放器调试','播放器调试','=== 摄像头设备列表获取 ===')
+    console.log('播放器调试','=== 摄像头设备列表获取 ===')
 
     const response = await getDeviceList()
-    console.log('播放器调试','播放器调试','API响应:', response)
+    console.log('播放器调试','API响应:', response)
     // 根据API文档，数据在items字段中
     cameraList.value = response.items || []
-    console.log('播放器调试','播放器调试','解析后的摄像头列表:', cameraList.value)
-    console.log('播放器调试','播放器调试','摄像头设备数量:', cameraList.value.length)
+    console.log('播放器调试','解析后的摄像头列表:', cameraList.value)
+    console.log('播放器调试','摄像头设备数量:', cameraList.value.length)
 
     addLog('success', `成功获取 ${cameraList.value.length} 个摄像头设备`)
 
@@ -222,12 +222,12 @@ const loadCameraList = async () => {
     if (cameraList.value.length > 0 && !selectedCameraId.value) {
       selectedCameraId.value = cameraList.value[0].id
       addLog('info', `默认选择摄像头: ${getCurrentCameraName()}`)
-      console.log('播放器调试','播放器调试','默认选择摄像头ID:', selectedCameraId.value)
+      console.log('播放器调试','默认选择摄像头ID:', selectedCameraId.value)
     }
   } catch (error: unknown) {
     console.error('获取摄像头设备列表失败:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.log('播放器调试','播放器调试','错误详情:', {
+    console.log('播放器调试','错误详情:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       response: (error as any)?.response
@@ -244,7 +244,7 @@ const loadCameraList = async () => {
     ]
     selectedCameraId.value = '1'
     addLog('warning', '使用默认摄像头配置进行测试')
-    console.log('播放器调试','播放器调试','使用默认摄像头配置:', cameraList.value)
+    console.log('播放器调试','使用默认摄像头配置:', cameraList.value)
   } finally {
     isRefreshing.value = false
   }
@@ -268,7 +268,7 @@ const onCameraChange = () => {
 const createEasyPlayer = () => {
   try {
     addLog('info', '正在创建 EasyPlayer 实例...')
-    console.log('播放器调试','播放器调试','=== EasyPlayer 实例创建 ===')
+    console.log('播放器调试','=== EasyPlayer 实例创建 ===')
 
     // 检查EasyPlayerPro是否可用
     if (typeof window.EasyPlayerPro === 'undefined') {
@@ -276,11 +276,11 @@ const createEasyPlayer = () => {
       throw new Error('EasyPlayerPro 库未加载')
     }
 
-    console.log('播放器调试','播放器调试','EasyPlayerPro 构造函数可用:', window.EasyPlayerPro)
+    console.log('播放器调试','EasyPlayerPro 构造函数可用:', window.EasyPlayerPro)
 
     // 销毁现有实例
     if (playerInstance.value) {
-      console.log('播放器调试','播放器调试','销毁现有播放器实例')
+      console.log('播放器调试','销毁现有播放器实例')
       playerInstance.value.destroy()
       playerInstance.value = null
     }
@@ -304,22 +304,22 @@ const createEasyPlayer = () => {
       debug: true
     }
 
-    console.log('播放器调试','播放器调试','播放器配置:', playerConfig)
-    console.log('播放器调试','播放器调试','容器元素:', container)
+    console.log('播放器调试','播放器配置:', playerConfig)
+    console.log('播放器调试','容器元素:', container)
 
     // 创建新的播放器实例 - 传入容器元素和配置
     playerInstance.value = new window.EasyPlayerPro(container, playerConfig)
-    console.log('播放器调试','播放器调试','播放器实例创建成功:', playerInstance.value)
+    console.log('播放器调试','播放器实例创建成功:', playerInstance.value)
 
     // 绑定事件监听器
     playerInstance.value.on('loadstart', () => {
-      console.log('播放器调试','播放器调试','EasyPlayer事件: loadstart')
+      console.log('播放器调试','EasyPlayer事件: loadstart')
       addLog('info', 'EasyPlayer: 开始加载流媒体')
       playerStatus.value = 'loading'
     })
 
     playerInstance.value.on('loadeddata', () => {
-      console.log('播放器调试','播放器调试','EasyPlayer事件: loadeddata')
+      console.log('播放器调试','EasyPlayer事件: loadeddata')
       addLog('success', 'EasyPlayer: 流媒体加载成功')
       playerStatus.value = 'playing'
     })
@@ -332,13 +332,13 @@ const createEasyPlayer = () => {
     })
 
     playerInstance.value.on('ended', () => {
-      console.log('播放器调试','播放器调试','EasyPlayer事件: ended')
+      console.log('播放器调试','EasyPlayer事件: ended')
       addLog('warning', 'EasyPlayer: 播放结束')
       playerStatus.value = 'idle'
     })
 
     addLog('success', 'EasyPlayer 实例创建成功')
-    console.log('播放器调试','播放器调试','EasyPlayer 实例创建完成')
+    console.log('播放器调试','EasyPlayer 实例创建完成')
     return true
   } catch (error: unknown) {
     console.error('创建 EasyPlayer 实例失败:', error)
@@ -359,8 +359,8 @@ const startPlay = async () => {
   try {
     isLoading.value = true
     addLog('info', `开始播放摄像头 ${getCurrentCameraName()}`)
-    console.log('播放器调试','播放器调试','=== 开始播放流程 ===')
-    console.log('播放器调试','播放器调试','选择的摄像头ID:', selectedCameraId.value)
+    console.log('播放器调试','=== 开始播放流程 ===')
+    console.log('播放器调试','选择的摄像头ID:', selectedCameraId.value)
 
     // 创建播放器实例
     if (!createEasyPlayer()) {
@@ -371,17 +371,17 @@ const startPlay = async () => {
     // 构建流媒体URL - 使用完整的HTTP地址
     currentStreamUrl.value = `http://192.168.2.57/webrtc-api/live/${selectedCameraId.value}_01.flv`
     addLog('info', `流媒体地址: ${currentStreamUrl.value}`)
-    console.log('播放器调试','播放器调试','流媒体URL:', currentStreamUrl.value)
+    console.log('播放器调试','流媒体URL:', currentStreamUrl.value)
 
     // 开始播放
-    console.log('播放器调试','播放器调试','调用播放器play方法...')
+    console.log('播放器调试','调用播放器play方法...')
     await playerInstance.value.play(currentStreamUrl.value)
     addLog('success', '播放命令已发送')
-    console.log('播放器调试','播放器调试','播放命令发送成功')
+    console.log('播放器调试','播放命令发送成功')
 
   } catch (error: unknown) {
     console.error('播放失败:', error)
-    console.log('播放器调试','播放器调试','播放错误详情:', {
+    console.log('播放器调试','播放错误详情:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
       playerInstance: playerInstance.value
@@ -475,23 +475,23 @@ onMounted(async () => {
   addLog('info', '摄像头测试页面已加载')
 
   // 详细检查EasyPlayer库加载状态
-  console.log('播放器调试','播放器调试','=== EasyPlayer 库加载检查 ===')
-  console.log('播放器调试','播放器调试','window.EasyPlayerPro:', window.EasyPlayerPro)
-  console.log('播放器调试','播放器调试','typeof window.EasyPlayerPro:', typeof window.EasyPlayerPro)
-  console.log('播放器调试','播放器调试','window对象上的EasyPlayer相关属性:', Object.keys(window).filter(key => key.toLowerCase().includes('easy')))
+  console.log('播放器调试','=== EasyPlayer 库加载检查 ===')
+  console.log('播放器调试','window.EasyPlayerPro:', window.EasyPlayerPro)
+  console.log('播放器调试','typeof window.EasyPlayerPro:', typeof window.EasyPlayerPro)
+  console.log('播放器调试','window对象上的EasyPlayer相关属性:', Object.keys(window).filter(key => key.toLowerCase().includes('easy')))
 
   if (typeof window.EasyPlayerPro === 'undefined') {
     addLog('error', 'EasyPlayerPro 库未加载，请检查库文件引入')
     console.error('EasyPlayerPro 库未加载！')
-    console.log('播放器调试','播放器调试','请检查以下文件是否正确加载:')
-    console.log('播放器调试','播放器调试','- /EasyPlayer-decode.js')
-    console.log('播放器调试','播放器调试','- /EasyPlayer-lib.js')
-    console.log('播放器调试','播放器调试','- /EasyPlayer-pro.js')
+    console.log('播放器调试','请检查以下文件是否正确加载:')
+    console.log('播放器调试','- /EasyPlayer-decode.js')
+    console.log('播放器调试','- /EasyPlayer-lib.js')
+    console.log('播放器调试','- /EasyPlayer-pro.js')
     ElMessage.error('EasyPlayerPro 库未加载')
   } else {
     addLog('success', 'EasyPlayerPro 库已加载')
-    console.log('播放器调试','播放器调试','EasyPlayerPro 库加载成功！')
-    console.log('播放器调试','播放器调试','EasyPlayerPro 构造函数:', window.EasyPlayerPro)
+    console.log('播放器调试','EasyPlayerPro 库加载成功！')
+    console.log('播放器调试','EasyPlayerPro 构造函数:', window.EasyPlayerPro)
   }
 
   // 加载摄像头设备列表
