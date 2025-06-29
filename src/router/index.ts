@@ -36,6 +36,11 @@ const router = createRouter({
       name: 'ApiTestView',
       component: () => import('../views/ApiTestView.vue'),
     },
+    {
+      path: '/camera-test',
+      name: 'CameraTestView',
+      component: () => import('../views/CameraTestView.vue'),
+    },
   ]
 })
 

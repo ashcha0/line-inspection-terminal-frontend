@@ -20,6 +20,7 @@
     <div style="text-align: center">
       <el-button type="primary" :disabled="!allSuccess" @click="enterSystem">进入系统</el-button>
       <el-button @click="runChecks" :loading="isChecking">重新检测</el-button>
+      <el-button type="info" @click="goToCameraTest">摄像头测试</el-button>
     </div>
   </el-card>
 
@@ -102,6 +103,10 @@ const runChecks = async () => {
 
 const enterSystem = () => {
   router.push('/tasks')
+}
+
+const goToCameraTest = () => {
+  router.push('/camera-test')
 }
 
 const handleSettingsSaved = () => {

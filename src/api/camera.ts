@@ -14,6 +14,7 @@ export interface CameraDevice {
 // 摄像头设备列表响应
 export interface CameraDeviceListResponse {
   data: CameraDevice[]
+  items: CameraDevice[]  // 添加 items 属性以兼容现有代码
   total: number
   page: number
   size: number
