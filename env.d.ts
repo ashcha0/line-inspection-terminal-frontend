@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-// 为 window 对象添加 ZLMRTCClient 属性
 interface Window {
   ZLMRTCClient: any;
+  //ZLMRTCClient已废弃，请替换成easyplayer
 }

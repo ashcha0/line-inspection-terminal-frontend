@@ -157,26 +157,6 @@ const playStream = () => {
   }
   // 根据接口文档，使用摄像头ID构建流媒体URL
   const webrtcUrl = `/webrtc-api/index/api/webrtc?app=live&stream=${currentStreamId.value}_01&type=play`
-
-  // ZLMRTCClient 是从外部脚本加载的，所以我们使用 window.ZLMRTCClient
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rtcClient = new (window as any).ZLMRTCClient.Endpoint({
-    element: videoPlayer.value,
-    zlmsdpUrl: webrtcUrl,
-    debug: true
-  })
-
-  // 为事件处理器的参数显式指定 any 类型，并使用忽略注释
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rtcClient.on((window as any).ZLMRTCClient.Events.WEBRTC_ON_REMOTE_STREAMS, (e: any) => {
-    console.log('播放成功', e.streams)
-  })
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rtcClient.on((window as any).ZLMRTCClient.Events.WEBRTC_OFFER_ANWSER_EXCHANGE_FAILED, (e: any) => {
-    console.error('信令交换失败', e)
-    ElMessage.error('视频流连接失败，请检查流媒体服务')
-  })
 }
 
 const toggleAudio = () => {
@@ -188,11 +168,7 @@ const toggleAudio = () => {
     const audioUrl = `/webrtc-api/index/api/webrtc?app=live&stream=5&type=play`
     // 连接车载WiFi时直接使用车载服务器地址（取消注释并注释上面的audioUrl）
     // const audioUrl = `http://192.168.2.2/webrtc-api/index/api/webrtc?app=live&stream=5&type=play`
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    audioClient = new (window as any).ZLMRTCClient.Endpoint({
-      zlmsdpUrl: audioUrl,
-      debug: true
-    })
+
     ElMessage.success('音频已开启')
   } else {
     // 关闭音频流
@@ -255,7 +231,8 @@ onMounted(async () => {
 
   heartbeatTimer = window.setInterval(async () => {
     const res = await getHeartbeat()
-    agvStatus.value = res.data
+    // agvStatus.value = res.data
+    //ZLMRTCClient已废弃，请替换成easyplayer
   }, 2000)
 
   liveInfoTimer = window.setInterval(async () => {
