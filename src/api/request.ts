@@ -20,9 +20,10 @@ service.interceptors.response.use(
    */
   (response: AxiosResponse<ApiResponse>) => {
     const res = response.data
-    console.log('API响应:', res);
+    console.log('API原始响应:', response);
+    console.log('API解析后响应:', res);
 
-    // 如果自定义状态码不为0，则判断为错误
+    // 如果自定义状态码不为200，则判断为错误
     if (res.code !== 200) {
       ElMessage({
         message: res.msg || 'Error',
@@ -31,7 +32,8 @@ service.interceptors.response.use(
       })
       return Promise.reject(new Error(res.msg || 'Error'))
     } else {
-      // 成功则直接返回完整的响应对象，保持类型一致性
+      // 成功则返回完整的response对象，保持类型一致性
+      console.log('API成功响应，返回完整response对象');
       return response
     }
   },

@@ -23,9 +23,26 @@
               :value="device.id"
             />
           </el-select>
+          
+          <!-- 任务控制按钮 -->
+          <el-button 
+            v-if="taskInfo.taskStatus === '待巡视'" 
+            type="success" 
+            @click="handleStartTask"
+            size="default"
+          >
+            ▶️ 启动任务
+          </el-button>
+          
+          <!-- AGV控制按钮 -->
           <el-button type="primary" @click="handleMove('forward')">前进</el-button>
-          <el-button type="warning" @click="handleMove('stop')">停止</el-button>
+          <el-button type="warning" @click="handleMove('stop')">停止移动</el-button>
           <el-button type="info" @click="handleMove('backward')">后退</el-button>
+          <span style="font-size: 12px; color: #999; margin-left: 5px;">
+            (仅控制AGV移动，不影响巡检任务)
+          </span>
+          
+          <!-- 其他功能按钮 -->
           <el-button
             :type="audioEnabled ? 'success' : 'default'"
             @click="toggleAudio"
@@ -33,23 +50,90 @@
           >
             {{ audioEnabled ? '音频开' : '音频关' }}
           </el-button>
+          <el-button type="warning" @click="testLiveInfo" style="border-style: dashed;">
+            🔍 测试缺陷轮询
+          </el-button>
+          
+          <!-- 任务结束按钮 -->
           <el-button type="danger" @click="handleEndTask(true)">终止巡检</el-button>
           <el-button type="success" @click="handleEndTask(false)">完成巡检</el-button>
         </div>
       </el-col>
       <el-col :span="6">
         <el-card>
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>任务状态</span>
+              <el-tag 
+                :type="taskInfo.taskStatus === '巡视中' ? 'success' : 
+                      taskInfo.taskStatus === '待巡视' ? 'info' : 
+                      taskInfo.taskStatus === '已完成' ? 'primary' : 'warning'"
+                size="small"
+              >
+                {{ taskInfo.taskStatus || '未知' }}
+              </el-tag>
+            </div>
+          </template>
+          <div style="font-size: 12px;">
+            <p><strong>任务信息:</strong></p>
+            <p>任务ID: {{ id }}</p>
+            <p>任务名称: {{ taskInfo.taskName || '加载中...' }}</p>
+            <p>任务状态: {{ taskInfo.taskStatus || '加载中...' }}</p>
+            <p>创建人: {{ taskInfo.creator || '-' }}</p>
+            <p>执行人: {{ taskInfo.executor || '-' }}</p>
+          </div>
+        </el-card>
+        <el-card style="margin-top: 10px">
           <template #header>车辆状态</template>
           <p>系统时间: {{ agvStatus?.sysTime }}</p>
           <p>行驶状态: {{ agvStatus?.isRunning ? '行驶中' : '停止' }}</p>
           <p>当前距离: {{ agvStatus?.currentPosition?.toFixed(2) }} m</p>
         </el-card>
         <el-card style="margin-top: 20px">
-          <template #header>实时缺陷</template>
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>实时缺陷</span>
+              <el-tag size="small" type="info">{{ liveFlaws.length }} 个</el-tag>
+            </div>
+          </template>
           <div style="height: 300px; overflow-y: auto">
-            <p v-for="flaw in liveFlaws" :key="flaw.id">
+            <!-- 调试信息 -->
+            <div style="background: #f5f7fa; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 12px;">
+              <p><strong>调试信息:</strong></p>
+              <p>任务ID: {{ id }}</p>
+              <p>任务状态: <span :style="{ color: taskInfo.taskStatus === '巡视中' ? '#67c23a' : '#e6a23c', fontWeight: 'bold' }">{{ taskInfo.taskStatus || '加载中...' }}</span></p>
+              <p>轮询状态: {{ liveInfoTimer ? '✅ 运行中' : '❌ 已停止' }}</p>
+              <p>缺陷总数: {{ liveFlaws.length }}</p>
+              <p>最后更新: {{ new Date().toLocaleTimeString() }}</p>
+              
+              <!-- 状态指导 -->
+              <div style="margin-top: 8px; padding: 6px; border-radius: 3px;" 
+                   :style="{ 
+                     backgroundColor: taskInfo.taskStatus === '巡视中' ? '#f0f9ff' : '#fff7ed',
+                     borderLeft: `3px solid ${taskInfo.taskStatus === '巡视中' ? '#67c23a' : '#e6a23c'}`
+                   }">
+                <p style="margin: 0; font-weight: bold;">
+                  {{ taskInfo.taskStatus === '巡视中' ? '✅ 状态正常' : '⚠️ 需要注意' }}
+                </p>
+                <p style="margin: 2px 0 0 0; font-size: 11px;">
+                  {{ taskInfo.taskStatus === '巡视中' 
+                      ? '任务正在运行，可以接收实时缺陷数据' 
+                      : taskInfo.taskStatus === '待巡视' 
+                        ? '任务未启动，点击上方"启动任务"按钮开始巡检' 
+                        : '任务已结束或异常，无法接收实时缺陷数据' 
+                  }}
+                </p>
+              </div>
+            </div>
+            
+            <!-- 缺陷列表 -->
+            <div v-for="(flaw, index) in liveFlaws" :key="flaw.id" style="margin-bottom: 8px;">
+              <el-tag size="small" type="warning" style="margin-right: 8px;">{{ index + 1 }}</el-tag>
               在 {{ flaw.flawDistance }}m 处发现: {{ flaw.flawName }}
-            </p>
+              <div style="font-size: 12px; color: #999; margin-top: 2px;">
+                ID: {{ flaw.id }} | 类型: {{ flaw.flawType }} | 等级: {{ flaw.level }}
+              </div>
+            </div>
             <el-empty v-if="liveFlaws.length === 0" description="暂无缺陷" :image-size="50" />
           </div>
         </el-card>
@@ -91,7 +175,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getHeartbeat, agvForward, agvStop, agvBackward } from '@/api/movement'
 import { getLiveInfo } from '@/api/flaw'
-import { getTask, endTask } from '@/api/task'
+import { getTask, endTask, startTask } from '@/api/task'
 import { getDeviceList, type CameraDevice } from '@/api/camera'
 import { ElMessage } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
@@ -124,8 +208,28 @@ let statusPollingTimer: NodeJS.Timeout | null = null
 // 加载任务信息
 const loadTaskInfo = async () => {
   try {
-    const res = await getTask(Number(id))
-    taskInfo.value = res.data
+    const response = await getTask(Number(id))
+    taskInfo.value = response.data.data
+    console.log('任务执行页面','加载的任务信息:', taskInfo.value)
+    console.log('任务执行页面','任务状态:', taskInfo.value.taskStatus)
+    
+    // 检查任务状态，给出相应提醒但不自动启动
+    if (taskInfo.value.taskStatus === '待巡视') {
+      console.log('任务执行页面','任务状态为"待巡视"，需要手动启动')
+      ElMessage.warning({
+        message: '当前任务未启动，需要先启动任务才能进行巡检和获取实时缺陷数据',
+        duration: 5000
+      })
+    } else if (taskInfo.value.taskStatus === '巡视中') {
+      console.log('任务执行页面','任务已在巡视中')
+      ElMessage.success('任务正在进行中，可以查看实时缺陷数据')
+    } else if (taskInfo.value.taskStatus === '已完成') {
+      console.log('任务执行页面','任务已完成')
+      ElMessage.info('任务已完成，可以查看历史数据')
+    } else {
+      console.log('任务执行页面','任务状态为:', taskInfo.value.taskStatus)
+      ElMessage.warning(`任务状态: ${taskInfo.value.taskStatus}`)
+    }
   } catch (error) {
     ElMessage.error('加载任务信息失败')
     console.error('加载任务信息失败:', error)
@@ -353,6 +457,29 @@ const handleMove = async (action: 'forward' | 'stop' | 'backward') => {
   }
 }
 
+const handleStartTask = async () => {
+  try {
+    console.log('任务执行页面','用户手动启动任务，任务ID:', id)
+    ElMessage.info('正在启动任务...')
+    
+    await startTask(Number(id))
+    console.log('任务执行页面','任务启动成功')
+    ElMessage.success('任务已启动')
+    
+    // 重新获取任务信息以确认状态
+    const updatedResponse = await getTask(Number(id))
+    taskInfo.value = updatedResponse.data.data
+    console.log('任务执行页面','启动后任务状态:', taskInfo.value.taskStatus)
+    
+    if (taskInfo.value.taskStatus === '巡视中') {
+      ElMessage.success('任务现在正在运行，可以查看实时缺陷数据')
+    }
+  } catch (error) {
+    console.error('任务执行页面','启动任务失败:', error)
+    ElMessage.error('启动任务失败，请检查任务状态或联系管理员')
+  }
+}
+
 const handleEndTask = async (isAbort: boolean) => {
   await endTask(Number(id), isAbort)
   ElMessage.success(isAbort ? '任务已终止' : '任务已完成，请复盘')
@@ -378,8 +505,8 @@ const goBack = () => {
 // 加载AGV状态
 const loadAgvStatus = async () => {
   try {
-    const res = await getHeartbeat()
-    agvStatus.value = res.data
+    const response = await getHeartbeat()
+    agvStatus.value = response.data.data
   } catch (error) {
     console.error('获取AGV状态失败:', error)
     // 如果获取失败，显示默认状态
@@ -405,6 +532,73 @@ const stopStatusPolling = () => {
   if (statusPollingTimer) {
     clearInterval(statusPollingTimer)
     statusPollingTimer = null
+  }
+}
+
+const testLiveInfo = async () => {
+  try {
+    console.log('任务执行页面','=== 手动测试缺陷轮询 ===')
+    console.log('任务执行页面','当前任务状态:', taskInfo.value.taskStatus)
+    
+    if (taskInfo.value.taskStatus !== '巡视中') {
+      ElMessage.warning('任务状态不是"巡视中"，可能无法获取实时缺陷数据')
+    }
+    
+    const response = await getLiveInfo(id)
+    const res = response.data // 从response中获取实际数据
+    console.log('任务执行页面','API响应完整对象:', response)
+    console.log('任务执行页面','API响应原始数据:', res)
+    console.log('任务执行页面','API响应状态:', res.code)
+    console.log('任务执行页面','API响应消息:', res.msg)
+    console.log('任务执行页面','API响应数据:', res.data)
+    console.log('任务执行页面','API响应数据类型:', typeof res.data)
+    console.log('任务执行页面','API响应数据是否为数组:', Array.isArray(res.data))
+    
+    if (res.data) {
+      console.log('任务执行页面','服务器返回的缺陷数量:', res.data.length)
+      
+      if (res.data.length > 0) {
+        console.log('任务执行页面','服务器返回的缺陷列表:', res.data)
+        
+        // 检查是否有新的缺陷
+        const newFlaws = res.data.filter((flaw: Flaw) => {
+          const exists = liveFlaws.value.find(existing => existing.id === flaw.id)
+          console.log('任务执行页面',`检查缺陷ID ${flaw.id} 是否已存在:`, !!exists)
+          return !exists
+        })
+
+        console.log('任务执行页面','过滤后的新缺陷数量:', newFlaws.length)
+        console.log('任务执行页面','新缺陷列表:', newFlaws)
+
+        if (newFlaws.length > 0) {
+          console.log('任务执行页面','发现新缺陷，准备添加到列表')
+          // 添加新缺陷到列表
+          liveFlaws.value.push(...newFlaws)
+          console.log('任务执行页面','添加后的缺陷总数:', liveFlaws.value.length)
+          console.log('任务执行页面','当前完整缺陷列表:', liveFlaws.value)
+          
+          // 显示第一个新缺陷的弹窗
+          currentFlaw.value = newFlaws[0]
+          console.log('任务执行页面','设置当前缺陷:', currentFlaw.value)
+          flawDialogVisible.value = true
+          console.log('任务执行页面','弹窗显示状态:', flawDialogVisible.value)
+          ElMessage.warning(`发现 ${newFlaws.length} 个新的实时缺陷!`)
+        } else {
+          console.log('任务执行页面','没有新缺陷，跳过更新')
+          ElMessage.info('测试完成：服务器有数据但都是已知缺陷')
+        }
+      } else {
+        console.log('任务执行页面','服务器返回空的缺陷列表')
+        ElMessage.info('测试完成：服务器返回空的缺陷列表')
+      }
+    } else {
+      console.log('任务执行页面','服务器返回的data为空或null')
+      ElMessage.warning('测试完成：服务器返回的data为空')
+    }
+  } catch (error) {
+    console.error('任务执行页面','获取实时缺陷信息失败:', error)
+    console.error('任务执行页面','错误详情:', error.response || error)
+    ElMessage.error('获取实时缺陷信息失败，请检查网络连接')
   }
 }
 
@@ -436,34 +630,88 @@ onMounted(async () => {
 
   heartbeatTimer = window.setInterval(async () => {
     try {
-      const res = await getHeartbeat()
-      agvStatus.value = res.data
+      const response = await getHeartbeat()
+      agvStatus.value = response.data.data
     } catch (error) {
       console.error('获取AGV心跳失败:', error)
     }
   }, 2000)
 
+  // 添加详细日志的实时缺陷轮询
+  console.log('任务执行页面','=== 开始设置实时缺陷轮询 ===')
+  console.log('任务执行页面','任务ID:', id)
+  
   liveInfoTimer = window.setInterval(async () => {
+    console.log('任务执行页面','=== 开始轮询实时缺陷信息 ===')
+    console.log('任务执行页面','轮询时间:', new Date().toLocaleTimeString())
+    console.log('任务执行页面','任务ID:', id)
+    console.log('任务执行页面','当前任务状态:', taskInfo.value.taskStatus)
+    console.log('任务执行页面','当前已有缺陷数量:', liveFlaws.value.length)
+    
+    // 检查任务状态
+    if (taskInfo.value.taskStatus !== '巡视中') {
+      console.log('任务执行页面','任务状态不是"巡视中"，但继续轮询以监控状态变化')
+    }
+    
     try {
-      const res = await getLiveInfo(id)
-      if (res.data && res.data.length > 0) {
-        // 检查是否有新的缺陷
-        const newFlaws = res.data.filter((flaw: Flaw) =>
-          !liveFlaws.value.find(existing => existing.id === flaw.id)
-        )
+      const response = await getLiveInfo(id)
+      const res = response.data // 从response中获取实际数据
+      console.log('任务执行页面','API响应完整对象:', response)
+      console.log('任务执行页面','API响应原始数据:', res)
+      console.log('任务执行页面','API响应状态:', res.code)
+      console.log('任务执行页面','API响应消息:', res.msg)
+      console.log('任务执行页面','API响应数据:', res.data)
+      console.log('任务执行页面','API响应数据类型:', typeof res.data)
+      console.log('任务执行页面','API响应数据是否为数组:', Array.isArray(res.data))
+      
+      if (res.data) {
+        console.log('任务执行页面','服务器返回的缺陷数量:', res.data.length)
+        
+        if (res.data.length > 0) {
+          console.log('任务执行页面','服务器返回的缺陷列表:', res.data)
+          
+          // 检查是否有新的缺陷
+          const newFlaws = res.data.filter((flaw: Flaw) => {
+            const exists = liveFlaws.value.find(existing => existing.id === flaw.id)
+            console.log('任务执行页面',`检查缺陷ID ${flaw.id} 是否已存在:`, !!exists)
+            return !exists
+          })
 
-        if (newFlaws.length > 0) {
-          liveFlaws.value.push(...newFlaws)
-          // 显示第一个新缺陷的弹窗
-          currentFlaw.value = newFlaws[0]
-          flawDialogVisible.value = true
-          ElMessage.warning(`发现新的实时缺陷!`)
+          console.log('任务执行页面','过滤后的新缺陷数量:', newFlaws.length)
+          console.log('任务执行页面','新缺陷列表:', newFlaws)
+
+          if (newFlaws.length > 0) {
+            console.log('任务执行页面','发现新缺陷，准备添加到列表')
+            // 添加新缺陷到列表
+            liveFlaws.value.push(...newFlaws)
+            console.log('任务执行页面','添加后的缺陷总数:', liveFlaws.value.length)
+            console.log('任务执行页面','当前完整缺陷列表:', liveFlaws.value)
+            
+            // 显示第一个新缺陷的弹窗
+            currentFlaw.value = newFlaws[0]
+            console.log('任务执行页面','设置当前缺陷:', currentFlaw.value)
+            flawDialogVisible.value = true
+            console.log('任务执行页面','弹窗显示状态:', flawDialogVisible.value)
+            ElMessage.warning(`发现 ${newFlaws.length} 个新的实时缺陷!`)
+          } else {
+            console.log('任务执行页面','没有新缺陷，跳过更新')
+          }
+        } else {
+          console.log('任务执行页面','服务器返回空的缺陷列表')
         }
+      } else {
+        console.log('任务执行页面','服务器返回的data为空或null')
       }
     } catch (error) {
-      console.error('获取实时缺陷信息失败:', error)
+      console.error('任务执行页面','获取实时缺陷信息失败:', error)
+      console.error('任务执行页面','错误详情:', error.response || error)
+      ElMessage.error('获取实时缺陷信息失败，请检查网络连接')
     }
+    
+    console.log('任务执行页面','=== 完成本次轮询 ===')
   }, 5000)
+
+  console.log('任务执行页面','实时缺陷轮询定时器已设置，间隔5秒')
 
   // 开始状态轮询
   startStatusPolling()
@@ -501,5 +749,26 @@ onUnmounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.control-panel .el-button {
+  margin: 2px;
+}
+
+/* 按钮分组样式 */
+.control-panel .el-button[type="success"]:first-of-type {
+  margin-left: 15px;
+}
+
+.control-panel .el-button[type="primary"],
+.control-panel .el-button[type="warning"],
+.control-panel .el-button[type="info"] {
+  margin-left: 15px;
+}
+
+.control-panel .el-button[type="danger"],
+.control-panel .el-button[type="success"]:last-of-type {
+  margin-left: 15px;
 }
 </style>
