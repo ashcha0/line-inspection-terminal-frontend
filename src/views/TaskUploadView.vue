@@ -20,22 +20,22 @@
         <el-table :data="uploadItems" v-loading="isUploading">
           <el-table-column prop="info" label="文件名称" />
           <el-table-column prop="type" label="数据类型" />
-          <el-table-column prop="status" label="状态">
+          <el-table-column prop="uploadStatus" label="状态">
             <template #default="scope">
-              <el-tag v-if="scope.row.status === '待上传'" type="warning">待上传</el-tag>
-              <el-tag v-else-if="scope.row.status === '上传中'" type="primary">上传中</el-tag>
-              <el-tag v-else-if="scope.row.status === '上传成功'" type="success">上传成功</el-tag>
-              <el-tag v-else-if="scope.row.status === '上传失败'" type="danger">上传失败</el-tag>
+              <el-tag v-if="scope.row.uploadStatus === '待上传'" type="warning">待上传</el-tag>
+              <el-tag v-else-if="scope.row.uploadStatus === '上传中'" type="primary">上传中</el-tag>
+              <el-tag v-else-if="scope.row.uploadStatus === '上传成功'" type="success">上传成功</el-tag>
+              <el-tag v-else-if="scope.row.uploadStatus === '上传失败'" type="danger">上传失败</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="进度" width="200">
             <template #default="scope">
               <el-progress 
-                v-if="scope.row.status === '上传中'" 
+                v-if="scope.row.uploadStatus === '上传中'" 
                 :percentage="scope.row.progress || 0" 
                 :stroke-width="8"
               />
-              <span v-else>{{ scope.row.status }}</span>
+              <span v-else>{{ scope.row.uploadStatus }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -68,12 +68,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled } from '@element-plus/icons-vue'
 import { getTask, preUploadTask, uploadTask } from '@/api/task'
-import type { Task } from '@/types/models'
+import type { Task, AgvUploadInfoVO } from '@/types/models'
 
-interface UploadItem {
-  info: string
-  type: string
-  status: '待上传' | '上传中' | '上传成功' | '上传失败'
+// 扩展AgvUploadInfoVO以支持上传进度显示
+interface UploadItem extends AgvUploadInfoVO {
+  uploadStatus?: '待上传' | '上传中' | '上传成功' | '上传失败'
   progress?: number
 }
 
@@ -88,7 +87,7 @@ const uploadCompleted = ref(false)
 
 const uploadProgress = computed(() => {
   if (uploadItems.value.length === 0) return 0
-  const completed = uploadItems.value.filter(item => item.status === '上传成功').length
+  const completed = uploadItems.value.filter(item => item.uploadStatus === '上传成功').length
   return Math.round((completed / uploadItems.value.length) * 100)
 })
 
@@ -112,9 +111,15 @@ const loadTaskInfo = async () => {
 const loadUploadItems = async () => {
   try {
     const res = await preUploadTask(Number(taskId))
-    uploadItems.value = res.data || []
+    // 将AgvUploadInfoVO转换为UploadItem，添加上传状态字段
+    uploadItems.value = (res.data || []).map(item => ({
+      ...item,
+      uploadStatus: '待上传' as const,
+      progress: 0
+    }))
   } catch (error) {
     ElMessage.error('加载上传数据失败')
+    console.error('加载上传数据失败:', error)
   }
 }
 
@@ -127,7 +132,7 @@ const startUpload = async () => {
     // 模拟上传过程
     for (let i = 0; i < uploadItems.value.length; i++) {
       const item = uploadItems.value[i]
-      item.status = '上传中'
+      item.uploadStatus = '上传中'
       item.progress = 0
       
       // 模拟上传进度
@@ -136,7 +141,7 @@ const startUpload = async () => {
         await new Promise(resolve => setTimeout(resolve, 200))
       }
       
-      item.status = '上传成功'
+      item.uploadStatus = '上传成功'
       item.progress = 100
     }
     
@@ -147,10 +152,11 @@ const startUpload = async () => {
     ElMessage.success('数据上传完成')
   } catch (error) {
     ElMessage.error('上传失败，请重试')
+    console.error('上传失败:', error)
     // 标记失败的项目
     uploadItems.value.forEach(item => {
-      if (item.status === '上传中') {
-        item.status = '上传失败'
+      if (item.uploadStatus === '上传中') {
+        item.uploadStatus = '上传失败'
       }
     })
   } finally {

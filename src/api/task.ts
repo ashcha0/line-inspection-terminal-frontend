@@ -1,6 +1,6 @@
 import request from './request'
 import type { TableDataInfo, ApiResponse } from '@/types/api'
-import type { Task } from '@/types/models'
+import type { Task, AgvUploadInfoVO } from '@/types/models'
 
 /**
  * 定义任务列表的查询参数类型
@@ -67,7 +67,7 @@ export function endTask(id: number, isAbort: boolean): Promise<ApiResponse> {
   })
 }
 
-export function preUploadTask(id: number): Promise<ApiResponse> {
+export function preUploadTask(id: number): Promise<ApiResponse<AgvUploadInfoVO[]>> {
   return request({
     url: `/agv/task/preupload/${id}`,
     method: 'get'
