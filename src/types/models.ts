@@ -10,6 +10,11 @@ export interface Task {
   endTime?: string | null;
   createTime?: string;
   taskStatus: '待巡视' | '巡视中' | '待上传' | '已完成';
+  round?: number;
+  uploaded?: boolean;
+  remark?: string;
+  cloudTaskId?: number;
+  deleteFlag?: boolean;
   // ... 其他字段
 }
 

@@ -126,7 +126,7 @@ let liveInfoTimer: number | null = null
 const loadCameraDevices = async () => {
   try {
     const response = await getDeviceList()
-    cameraDevices.value = response.data || []
+    cameraDevices.value = response.data || response.items || []
     // 如果有设备，默认选择第一个
     if (cameraDevices.value.length > 0) {
       currentStreamId.value = cameraDevices.value[0].id

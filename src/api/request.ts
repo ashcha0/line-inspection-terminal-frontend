@@ -20,6 +20,7 @@ service.interceptors.response.use(
    */
   (response: AxiosResponse<ApiResponse>) => {
     const res = response.data
+    console.log('API响应:', res);
 
     // 如果自定义状态码不为0，则判断为错误
     if (res.code !== 200) {

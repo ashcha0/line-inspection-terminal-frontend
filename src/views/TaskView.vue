@@ -1,5 +1,21 @@
 <template>
   <div>
+    <el-alert
+      v-if="networkError"
+      title="网络连接错误"
+      type="error"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 20px;"
+    >
+      <template #default>
+        无法连接到车载服务器，请检查网络连接和服务器状态。
+        <el-button type="primary" size="small" @click="getTasks" style="margin-left: 10px;">
+          重试
+        </el-button>
+      </template>
+    </el-alert>
+    
     <el-card>
       <el-form :inline="true" :model="queryParams">
         <el-form-item label="任务编号">
@@ -18,12 +34,18 @@
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
         <el-form-item style="float: right;">
+            <el-button type="info" @click="testApiConnection" :loading="testingConnection">测试连接</el-button>
             <el-button type="success" @click="handleAddTask">📹 新增任务</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <el-table :data="taskList" v-loading="loading" style="width: 100%; margin-top: 20px;">
+    <el-table 
+      :data="taskList" 
+      v-loading="loading" 
+      style="width: 100%; margin-top: 20px;"
+      :empty-text="loading ? '加载中...' : '暂无任务数据'"
+    >
       <el-table-column prop="taskCode" label="任务编号" />
       <el-table-column prop="taskName" label="任务名称" />
       <el-table-column prop="taskStatus" label="状态">
@@ -70,6 +92,8 @@ import type { Task } from '@/types/models';
 
 const router = useRouter();
 const loading = ref(false);
+const testingConnection = ref(false);
+const networkError = ref(false);
 const taskList = ref<Task[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('');
@@ -87,9 +111,22 @@ const statusTagType = (status: Task['taskStatus']) => {
 
 const getTasks = async () => {
   loading.value = true;
+  networkError.value = false;
   try {
-    const res = await listTasks(queryParams);
-    taskList.value = res.rows;
+    const params = {
+      ...queryParams,
+      pageNum: 1,
+      pageSize: 999 // 获取所有任务
+    };
+    console.log('发送任务列表请求，参数:', params);
+    const res = await listTasks(params);
+    taskList.value = res.data.rows || [];
+    console.log('获取任务列表成功:', res.data);
+    console.log('任务列表数据:', taskList.value);
+  } catch (error) {
+    console.error('获取任务列表失败:', error);
+    networkError.value = true;
+    ElMessage.error('获取任务列表失败，请检查网络连接');
   } finally {
     loading.value = false;
   }
@@ -153,5 +190,27 @@ const handleViewDetail = (row: Task) => {
     }
 };
 
-onMounted(getTasks);
+const testApiConnection = async () => {
+    testingConnection.value = true;
+    try {
+        console.log('开始测试API连接...');
+        const params = {
+            pageNum: 1,
+            pageSize: 1
+        };
+        const res = await listTasks(params);
+        console.log('API连接测试成功:', res);
+        ElMessage.success('API连接正常');
+    } catch (error) {
+        console.error('API连接测试失败:', error);
+        ElMessage.error('API连接失败，请检查网络和服务器状态');
+    } finally {
+        testingConnection.value = false;
+    }
+};
+
+onMounted(() => {
+  console.log('TaskView 组件已挂载，开始获取任务列表');
+  getTasks();
+});
 </script>

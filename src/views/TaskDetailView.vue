@@ -93,11 +93,15 @@ const loadTaskInfo = async () => {
 };
 
 const getFlaws = async () => {
+  try {
     const res = await listFlaws(taskId);
-    flawList.value = res.rows;
+    flawList.value = res.data.rows || [];
     if (flawList.value.length > 0) {
-        currentFlaw.value = { ...flawList.value[0] };
+      currentFlaw.value = { ...flawList.value[0] };
     }
+  } catch (error) {
+    ElMessage.error('加载缺陷列表失败');
+  }
 };
 
 const handleFlawSelect = (row: Flaw) => {
