@@ -8,7 +8,7 @@ docker save -o line-inspection-frontend.tar line-inspection-frontend:latest
 docker load -i line-inspection-frontend.tar
 
 # 运行新容器
-docker run --network host -d --name line-inspection-frontend line-inspection-frontend:latest
+docker run -d -p 8080:80 --name line-inspection-frontend line-inspection-frontend:latest
 
 # 查看容器状态
 docker ps
